@@ -1,0 +1,49 @@
+{% extends "auth.html" %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:center;min-height:60vh;">
+  <div style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:40px 36px;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(27,63,122,0.08);">
+
+    <!-- Logo -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;">
+      <svg width="36" height="36" viewBox="0 0 34 34">
+        <polygon points="17,2 30,9 30,25 17,32 4,25 4,9" fill="none" stroke="#4AACE8" stroke-width="1.5"/>
+        <polygon points="17,12 22,15 22,19 17,22 12,19 12,15" fill="#4AACE8"/>
+      </svg>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:var(--navy);letter-spacing:0.5px;">{{ app_brand }}</div>
+        <div style="font-size:10px;color:var(--text-mute);">{{ app_name }}</div>
+      </div>
+    </div>
+
+    <div style="font-size:18px;font-weight:700;color:var(--navy);margin-bottom:4px;">Welcome back</div>
+    <div style="font-size:13px;color:var(--text-mute);margin-bottom:24px;">Please sign in to continue</div>
+
+    {% if error %}
+    <div style="background:#fde8e8;border-radius:8px;padding:10px 14px;font-size:13px;color:#c0392b;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+      <span>⚠</span> {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST" style="display:flex;flex-direction:column;gap:14px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-sec);margin-bottom:6px;">Username</label>
+        <input name="username" placeholder="Enter your username"
+               style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--navy);outline:none;background:var(--off);" />
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-sec);margin-bottom:6px;">Password</label>
+        <input name="password" type="password" placeholder="Enter your password"
+               style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--navy);outline:none;background:var(--off);" />
+      </div>
+      <button type="submit"
+              style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;margin-top:4px;">
+        Sign In
+      </button>
+    </form>
+
+  </div>
+</div>
+
+{% endblock %}

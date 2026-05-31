@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div>
+  <div class="page-title">Dashboards</div>
+  <div class="page-sub">Embedded reporting and external analytics views</div>
+</div>
+
+{% if power_bi_embeds %}
+  {% for embed in power_bi_embeds %}
+  <div class="card embed-card">
+    <div class="card-head">
+      <span>{{ embed.title }}</span>
+      <a href="{{ embed.url }}" target="_blank" rel="noopener noreferrer" class="embed-link">Open in Power BI</a>
+    </div>
+    <div class="embed-frame-wrap">
+      <iframe
+        title="{{ embed.title }}"
+        src="{{ embed.url }}"
+        frameborder="0"
+        allowfullscreen="true"
+        loading="lazy"
+        referrerpolicy="strict-origin-when-cross-origin"
+      ></iframe>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+<div class="card">
+  <div class="card-head">Power BI</div>
+  <p class="empty-state">Set <code>POWER_BI_EMBED_URL_1</code> and <code>POWER_BI_EMBED_TITLE_1</code> in <code>.env</code> to display dashboards here.</p>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div x-data="dashboard()" x-init="init()">
+
+  <div>
+    <div class="page-title">Job History</div>
+    <div class="page-sub">Full log of all task runs</div>
+  </div>
+
+  <!-- ── Filters ──────────────────────────────────────── -->
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <input x-model="historySearch" type="text" placeholder="Search actions or notes…"
+           style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--navy);background:var(--off);outline:none;width:220px;" />
+    <select x-model="historyStatus"
+            style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--navy);background:var(--off);outline:none;">
+      <option value="">All statuses</option>
+      <option value="done">Done</option>
+      <option value="failed">Failed</option>
+      <option value="running">Running</option>
+      <option value="warning">Warning</option>
+    </select>
+    <span style="font-size:11px;color:var(--text-mute);margin-left:4px;"
+          x-text="filteredJobs.length + ' records'"></span>
+  </div>
+
+  <!-- ── Full table ───────────────────────────────────── -->
+  <div class="card" style="margin-top:0">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Action</th>
+          <th>Status</th>
+          <th>Time Taken</th>
+          <th>Started</th>
+          <th>Finished</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template x-for="job in filteredJobs" :key="job.id">
+          <tr>
+            <td style="color:var(--text-mute);font-size:11px;" x-text="job.id"></td>
+            <td x-text="job.task_name"></td>
+            <td>
+              <span class="pill" :class="statusClass(job.status)"
+                    x-text="job.status"></span>
+            </td>
+            <td x-text="job.duration_s ? job.duration_s + 's' : '—'"></td>
+            <td x-text="formatDate(job.started_at)"></td>
+            <td x-text="formatDate(job.finished_at)"></td>
+            <td style="max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
+                x-text="job.notes ?? '—'"></td>
+          </tr>
+        </template>
+        <tr x-show="filteredJobs.length === 0">
+          <td colspan="7" style="text-align:center;color:var(--text-mute);padding:24px">
+            No matching records
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+{% endblock %}

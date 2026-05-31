@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div x-data="{ activeFilter: null }">
+
+  <!-- ── Header with compliance gauge ──────────────────────── -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+    <div>
+      <div class="page-title">Periodics</div>
+      <div class="page-sub" x-text="datetime"></div>
+    </div>
+
+    <!-- Compliance Gauge (SVG ring) -->
+    <!-- r=36, circumference = 2π×36 ≈ 226.2 -->
+    <div style="position:relative;width:84px;height:84px;flex-shrink:0;">
+      <svg width="84" height="84" style="transform:rotate(-90deg);">
+        <circle cx="42" cy="42" r="36" fill="none" stroke="#dce6f5" stroke-width="6"/>
+        <circle cx="42" cy="42" r="36" fill="none" stroke="#1B3F7A" stroke-width="6"
+          stroke-linecap="round"
+          :stroke-dasharray="226.2"
+          :stroke-dashoffset="226.2 - (((metrics.up_to_date||0) / Math.max((metrics.up_to_date||0)+(metrics.overdue||0)+(metrics.due_soon||0), 1)) * 226.2)"
+          style="transition:stroke-dashoffset 1s ease;"/>
+      </svg>
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
+        <span style="font-size:17px;font-weight:800;color:#1B3F7A;line-height:1;"
+              x-text="Math.round(((metrics.up_to_date||0)/Math.max((metrics.up_to_date||0)+(metrics.overdue||0)+(metrics.due_soon||0),1))*100) + '%'"></span>
+        <span style="font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:#8aa0c0;margin-top:2px;">Compliant</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Focus Alert ────────────────────────────────────────── -->
+  <div style="background:#fff;border-radius:14px;border:1px solid #dce6f5;border-left:4px solid #1B3F7A;box-shadow:0 1px 4px rgba(27,63,122,0.05);padding:18px 22px;display:flex;align-items:center;gap:18px;">
+    <div style="width:42px;height:42px;border-radius:12px;background:rgba(27,63,122,0.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
+        <circle cx="11" cy="11" r="9" stroke="#1B3F7A" stroke-width="2"/>
+        <path d="M11 7v4M11 14v1" stroke="#1B3F7A" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div style="flex:1;">
+      <div style="font-size:15px;font-weight:700;color:#1B3F7A;">
+        <span style="font-size:20px;font-weight:800;" x-text="attentionCount"></span> employees need attention today
+      </div>
+      <div style="font-size:12px;color:#5070a0;margin-top:3px;">Prioritize overdue medicals, new hires without bookings, and records that need review.</div>
+    </div>
+    <a href="/employee-status?category=overdue"
+       style="padding:9px 20px;border-radius:10px;background:#1B3F7A;color:#fff;font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap;box-shadow:0 2px 8px rgba(27,63,122,0.25);transition:transform 0.15s,box-shadow 0.15s;"
+       onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 14px rgba(27,63,122,0.35)'"
+       onmouseout="this.style.transform='none';this.style.boxShadow='0 2px 8px rgba(27,63,122,0.25)'">
+      Review All →
+    </a>
+  </div>
+
+  <!-- ── Active filter indicator ───────────────────────────── -->
+  <template x-if="activeFilter">
+    <div style="display:flex;align-items:center;gap:10px;margin-top:14px;padding:8px 14px;border-radius:8px;background:#f0f4ff;border:1px solid rgba(44,92,197,0.2);">
+      <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;"
+           :style="'background:' + {overdue:'#dc2626',due_soon:'#d97706',up_to_date:'#16a34a',new_hires:'#2563eb'}[activeFilter]"></div>
+      <span style="font-size:13px;font-weight:600;"
+            :style="'color:' + {overdue:'#dc2626',due_soon:'#d97706',up_to_date:'#16a34a',new_hires:'#2563eb'}[activeFilter]"
+            x-text="'Filtering: ' + {overdue:'Overdue',due_soon:'Due Soon',up_to_date:'Up to Date',new_hires:'New Hires'}[activeFilter]"></span>
+      <button @click="activeFilter = null"
+              style="margin-left:auto;background:none;border:none;color:#8aa0c0;cursor:pointer;font-size:12px;font-weight:600;">
+        Clear ✕
+      </button>
+    </div>
+  </template>
+
+  <!-- ── Metric Cards ───────────────────────────────────────── -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:14px;">
+
+    <!-- Overdue -->
+    <div @click="activeFilter = activeFilter === 'overdue' ? null : 'overdue'"
+         :style="activeFilter==='overdue'
+           ? 'padding:18px 20px;border-radius:12px;cursor:pointer;transition:all 0.25s ease;background:#dc2626;border:1px solid #dc2626;box-shadow:0 4px 16px rgba(220,38,38,0.30);'
+           : 'padding:18px 20px;border-radius:12px;cursor:pointer;transition:all 0.25s ease;background:#fef2f2;border:1px solid transparent;'">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;"
+           :style="activeFilter==='overdue' ? 'color:rgba(255,255,255,0.85);' : 'color:#dc2626;'">Overdue</div>
+      <div style="font-size:34px;font-weight:800;line-height:1;"
+           :style="activeFilter==='overdue' ? 'color:#fff;' : 'color:#dc2626;'"
+           x-text="metrics.overdue ?? 0"></div>
+      <div style="font-size:12px;margin-top:6px;"
+           :style="activeFilter==='overdue' ? 'color:rgba(255,255,255,0.7);' : 'color:#94a3b8;'">Past their exam date</div>
+      <a href="/employee-status?category=overdue" @click.stop
+         x-show="activeFilter==='overdue'"
+         style="display:inline-block;margin-top:10px;font-size:11px;font-weight:600;color:rgba(255,255,255,0.9);text-decoration:none;">
+        View employees →
+      </a>
+    </div>
+
+    <!-- Due Soon -->
+    <div @click="activeFilter = activeFilter === 'due_soon' ? null : 'due_soon'"
+         :style="activeFilter==='due_soon'
+           ? 'padding:18px 20px;border-radius:12px;cursor:pointer;transition:all 0.25s ease;background:#d97706;border:1px solid #d97706;box-shadow:0 4px 16px rgba(217,119,6,0.30);'
+           : 'padding:18px 20px;border-radius:12px;cursor:pointer;transition:all 0.25s ease;background:#fffbeb;border:1px solid transparent;'">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;"
+           :style="activeFilter==='due_soon' ? 'color:rgba(255,255,255,0.85);' : 'color:#d97706;'">Due Within 30 Days</div>
+      <div style="font-size:34px;font-weight:800;line-height:1;"
+           :style="activeFilter==='due_soon' ? 'color:#fff;' : 'color:#d97706;'"
+           x-text="metrics.due_soon ?? 0"></div>
+      <div style="font-size:12px;margin-top:6px;"
+           :style="activeFilter==='due_soon' ? 'color:rgba(255,255,255,0.7);' : 'color:#94a3b8;'">Needs booking soon</div>
+      <a href="/employee-status?category=due_soon" @click.stop
+         x-show="activeFilter==='due_soon'"
+         style="display:inline-block;margin-top:10px;font-size:11px;font-weight:600;color:rgba(255,255,255,0.9);text-decoration:none;">
+        View employees →
+      </a>
+    </div>
+
+    <!-- Up to Date -->
+    <div @click="activeFilter = activeFilter === 'up_to_date' ? null : 'up_to_date'"
+         :style="activeFilter==='up_to_date'
+           ? 'padding:18px 20px;border-radius:12px;cursor:pointer;transition:all 0.25s ease;background:#16a34a;border:1px solid #16a34a;box-shadow:0 4px 16px rgba(22,163,74,0.30);'
+           : 'padding:18px 20px;border-radius:12px;cursor:pointer;transition:all 0.25s ease;background:#f0fdf4;border:1px solid transparent;'">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;"
+           :style="activeFilter==='up_to_date' ? 'color:rgba(255,255,255,0.85);' : 'color:#16a34a;'">Up to Date</div>
+      <div style="font-size:34px;font-weight:800;line-height:1;"
+           :style="activeFilter==='up_to_date' ? 'color:#fff;' : 'color:#16a34a;'"
+           x-text="metrics.up_to_date ?? 0"></div>
+      <div style="font-size:12px;margin-top:6px;"
+           :style="activeFilter==='up_to_date' ? 'color:rgba(255,255,255,0.7);' : 'color:#94a3b8;'">No action needed</div>
+      <a href="/employee-status?category=up_to_date" @click.stop
+         x-show="activeFilter==='up_to_date'"
+         style="display:inline-block;margin-top:10px;font-size:11px;font-weight:600;color:rgba(255,255,255,0.9);text-decoration:none;">
+        View employees →
+      </a>
+    </div>
+
+    <!-- New Hires -->
+    <div @click="activeFilter = activeFilter === 'new_hires' ? null : 'new_hires'"
+         :style="activeFilter==='new_hires'
+           ? 'padding:18px 20px;border-radius:12px;cursor:pointer;transition:all 0.25s ease;background:#2563eb;border:1px solid #2563eb;box-shadow:0 4px 16px rgba(37,99,235,0.30);'
+           : 'padding:18px 20px;border-radius:12px;cursor:pointer;transition:all 0.25s ease;background:#eff6ff;border:1px solid transparent;'">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;"
+           :style="activeFilter==='new_hires' ? 'color:rgba(255,255,255,0.85);' : 'color:#2563eb;'">New Hires</div>
+      <div style="font-size:34px;font-weight:800;line-height:1;"
+           :style="activeFilter==='new_hires' ? 'color:#fff;' : 'color:#2563eb;'"
+           x-text="metrics.pending_hires ?? 0"></div>
+      <div style="font-size:12px;margin-top:6px;"
+           :style="activeFilter==='new_hires' ? 'color:rgba(255,255,255,0.7);' : 'color:#94a3b8;'">Awaiting first booking</div>
+      <a href="/employee-status?category=new_hires" @click.stop
+         x-show="activeFilter==='new_hires'"
+         style="display:inline-block;margin-top:10px;font-size:11px;font-weight:600;color:rgba(255,255,255,0.9);text-decoration:none;">
+        View employees →
+      </a>
+    </div>
+
+  </div>
+
+  <!-- ── Status Distribution — Stacked Bar ─────────────────── -->
+  <div class="card" style="margin-top:16px;">
+    <div class="card-head">
+      Status Distribution
+      <span x-text="((metrics.overdue||0)+(metrics.due_soon||0)+(metrics.up_to_date||0)) + ' employees'"></span>
+    </div>
+
+    <!-- Stacked bar — segments sized by flex proportions -->
+    <div style="display:flex;height:40px;border-radius:10px;overflow:hidden;margin-bottom:18px;background:#f5f7fb;">
+      <div @click="activeFilter = activeFilter==='overdue' ? null : 'overdue'"
+           :style="'flex:' + (metrics.overdue||0) + ';background:#dc2626;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:opacity 0.3s;min-width:0;opacity:' + (activeFilter && activeFilter!=='overdue' ? 0.15 : 1)">
+        <span x-show="(metrics.overdue||0) > 0"
+              style="color:#fff;font-size:12px;font-weight:700;" x-text="metrics.overdue||0"></span>
+      </div>
+      <div @click="activeFilter = activeFilter==='due_soon' ? null : 'due_soon'"
+           :style="'flex:' + (metrics.due_soon||0) + ';background:#d97706;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:opacity 0.3s;min-width:0;opacity:' + (activeFilter && activeFilter!=='due_soon' ? 0.15 : 1)">
+        <span x-show="(metrics.due_soon||0) > 0"
+              style="color:#fff;font-size:12px;font-weight:700;" x-text="metrics.due_soon||0"></span>
+      </div>
+      <div @click="activeFilter = activeFilter==='up_to_date' ? null : 'up_to_date'"
+           :style="'flex:' + (metrics.up_to_date||0) + ';background:#16a34a;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:opacity 0.3s;min-width:0;opacity:' + (activeFilter && activeFilter!=='up_to_date' ? 0.15 : 1)">
+        <span x-show="(metrics.up_to_date||0) > 0"
+              style="color:#fff;font-size:12px;font-weight:700;" x-text="metrics.up_to_date||0"></span>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div style="display:flex;gap:22px;flex-wrap:wrap;">
+      <template x-for="item in [
+        { key:'overdue',    color:'#dc2626', label:'Overdue',    val: metrics.overdue||0 },
+        { key:'due_soon',   color:'#d97706', label:'Due Soon',   val: metrics.due_soon||0 },
+        { key:'up_to_date', color:'#16a34a', label:'Up to Date', val: metrics.up_to_date||0 }
+      ]" :key="item.key">
+        <div @click="activeFilter = activeFilter===item.key ? null : item.key"
+             style="display:flex;align-items:center;gap:7px;cursor:pointer;transition:opacity 0.3s;"
+             :style="activeFilter && activeFilter!==item.key ? 'opacity:0.3;' : ''">
+          <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;" :style="'background:' + item.color"></div>
+          <span style="font-size:12px;color:#5070a0;" x-text="item.label"></span>
+          <span style="font-size:12px;font-weight:700;color:#1B3F7A;" x-text="item.val"></span>
+          <span style="font-size:11px;color:#8aa0c0;"
+                x-text="'(' + Math.round((item.val / Math.max((metrics.overdue||0)+(metrics.due_soon||0)+(metrics.up_to_date||0),1))*100) + '%)'"></span>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- ── Department Breakdown ───────────────────────────────── -->
+  <div class="card" style="margin-top:16px;">
+    <div class="card-head">
+      Department Breakdown
+      <span x-text="departmentBreakdown.length + ' departments'"></span>
+    </div>
+
+    <!-- Loading skeleton -->
+    <div x-show="departmentBreakdown.length === 0"
+         style="display:flex;align-items:center;justify-content:center;padding:36px;gap:10px;color:#8aa0c0;font-size:13px;">
+      <div style="width:14px;height:14px;border:2px solid #dce6f5;border-top-color:#1B3F7A;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+      Loading department data…
+    </div>
+
+    <!-- Department rows -->
+    <div x-show="departmentBreakdown.length > 0"
+         style="display:flex;flex-direction:column;">
+      <template x-for="dept in departmentBreakdown" :key="dept.name">
+        <div style="display:grid;grid-template-columns:180px 1fr 48px;align-items:center;gap:20px;padding:9px 0;border-bottom:1px solid #f1f5f9;"
+             :style="$el.matches(':last-child') ? 'border-bottom:none;' : ''">
+
+          <!-- Dept name -->
+          <span style="font-size:13px;font-weight:600;color:#1B3F7A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
+                x-text="dept.name"></span>
+
+          <!-- Stacked bar -->
+          <div style="display:flex;height:28px;border-radius:8px;overflow:hidden;background:#f1f5f9;">
+            <div :style="'flex:' + (dept.overdue||0) + ';background:#dc2626;min-width:0;transition:opacity 0.3s;opacity:' + (activeFilter && activeFilter!=='overdue' ? 0.15 : 1)"
+                 @click.stop="activeFilter = activeFilter==='overdue' ? null : 'overdue'"
+                 style="cursor:pointer;"
+                 x-show="(dept.overdue||0) > 0"></div>
+            <div :style="'flex:' + (dept.due_soon||0) + ';background:#d97706;min-width:0;transition:opacity 0.3s;opacity:' + (activeFilter && activeFilter!=='due_soon' ? 0.15 : 1)"
+                 @click.stop="activeFilter = activeFilter==='due_soon' ? null : 'due_soon'"
+                 style="cursor:pointer;"
+                 x-show="(dept.due_soon||0) > 0"></div>
+            <div :style="'flex:' + (dept.up_to_date||0) + ';background:#16a34a;min-width:0;transition:opacity 0.3s;opacity:' + (activeFilter && activeFilter!=='up_to_date' ? 0.15 : 1)"
+                 @click.stop="activeFilter = activeFilter==='up_to_date' ? null : 'up_to_date'"
+                 style="cursor:pointer;"
+                 x-show="(dept.up_to_date||0) > 0"></div>
+          </div>
+
+          <!-- Total count -->
+          <span style="font-size:13px;font-weight:700;color:#5070a0;text-align:right;"
+                x-text="dept.total"></span>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- ── New Hires Needing Booking ──────────────────────────── -->
+  <div class="card" style="margin-top:16px;">
+    <div class="card-head">
+      New Hires Needing Booking
+      <span x-text="newHires.length + ' pending'"></span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th>Department</th>
+          <th>PS Group</th>
+          <th>Position</th>
+          <th>Flagged On</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template x-for="h in newHires" :key="h.id">
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="hire-avatar"
+                     x-text="h.personnel_name.split(' ').map(w=>w[0]).slice(0,2).join('')"></div>
+                <span x-text="h.personnel_name"></span>
+              </div>
+            </td>
+            <td x-text="h.department || '—'"></td>
+            <td x-text="h.ps_group || '—'"></td>
+            <td x-text="h.position || '—'"></td>
+            <td x-text="h.flagged_on ? new Date(h.flagged_on).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) : '—'"></td>
+            <td><span class="pill p-err">No exam booked</span></td>
+          </tr>
+        </template>
+
+        <!-- Empty state -->
+        <tr x-show="newHires.length === 0">
+          <td colspan="6" style="padding:44px 0;text-align:center;border-bottom:none;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+              <svg width="52" height="52" viewBox="0 0 56 56" fill="none">
+                <circle cx="28" cy="28" r="25" stroke="#dce6f5" stroke-width="2" stroke-dasharray="4 3"/>
+                <path d="M21 28 L25 32 L35 22" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <div style="font-size:13px;font-weight:600;color:#5070a0;">No pending new hires</div>
+              <div style="font-size:11px;color:#8aa0c0;">All new hires have been booked or none are flagged</div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div style="max-width:520px;">
+
+  <div style="margin-bottom:24px;">
+    <a href="/admin/users"
+       style="font-size:12px;color:#8aa0c0;text-decoration:none;display:inline-flex;align-items:center;gap:5px;margin-bottom:12px;">
+      ← Back to Users
+    </a>
+    <div class="page-title">{{ 'Password Reset' if is_reset else 'User Created' }}</div>
+    <div class="page-sub">
+      {{ 'A new temporary password has been generated for ' + (new_user.full_name or new_user.username) + '.' if is_reset
+         else (new_user.full_name or new_user.username) + ' has been onboarded successfully.' }}
+    </div>
+  </div>
+
+  <!-- Success card -->
+  <div class="card" style="margin:0;padding:28px 32px;">
+
+    <!-- User summary -->
+    <div style="display:flex;align-items:center;gap:14px;padding:16px;background:#f5f7fb;border-radius:10px;margin-bottom:24px;">
+      <div style="width:44px;height:44px;border-radius:50%;background:#dce6f5;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#1B3F7A;flex-shrink:0;">
+        {{ (new_user.full_name or new_user.username)[:2]|upper }}
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#1B3F7A;">{{ new_user.full_name or new_user.username }}</div>
+        <div style="font-size:12px;color:#5070a0;">{{ new_user.email }}</div>
+        <div style="font-size:11px;color:#8aa0c0;margin-top:2px;">{{ new_user.role_label }}</div>
+      </div>
+    </div>
+
+    <!-- Temp password reveal -->
+    <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:18px 20px;margin-bottom:20px;"
+         x-data="{ copied: false }">
+      <div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+        <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+          <path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm0 4v4m0 3v1" stroke="#92400e" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        This password will not be shown again — copy it now
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;">
+        <code id="tempPw"
+              style="flex:1;background:#fff;border:1px solid #fcd34d;border-radius:7px;padding:10px 14px;font-size:16px;font-weight:700;color:#1B3F7A;letter-spacing:1px;">
+          {{ temp_password }}
+        </code>
+        <button @click="navigator.clipboard.writeText('{{ temp_password }}').then(() => { copied = true; setTimeout(() => copied = false, 2500) })"
+                style="flex-shrink:0;background:#1B3F7A;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:12px;font-weight:600;cursor:pointer;transition:background 0.2s;"
+                :style="copied ? 'background:#16a34a;' : ''"
+                x-text="copied ? 'Copied!' : 'Copy'">
+        </button>
+      </div>
+
+      <div style="font-size:11px;color:#b45309;margin-top:10px;line-height:1.5;">
+        Share this password with <strong>{{ new_user.full_name or new_user.username }}</strong> securely.
+        They will be asked to set a new password on their first login.
+      </div>
+    </div>
+
+    <!-- Login details summary -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px;">
+      <div style="padding:12px 14px;background:#f5f7fb;border-radius:8px;">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.7px;color:#8aa0c0;margin-bottom:4px;">Username</div>
+        <div style="font-size:13px;font-weight:700;color:#1B3F7A;">{{ new_user.username }}</div>
+      </div>
+      <div style="padding:12px 14px;background:#f5f7fb;border-radius:8px;">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.7px;color:#8aa0c0;margin-bottom:4px;">Temp Password</div>
+        <div style="font-size:13px;font-weight:700;color:#1B3F7A;">{{ temp_password }}</div>
+      </div>
+      <div style="padding:12px 14px;background:#f5f7fb;border-radius:8px;">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.7px;color:#8aa0c0;margin-bottom:4px;">Role</div>
+        <div style="font-size:13px;font-weight:700;color:#1B3F7A;">{{ new_user.role_label }}</div>
+      </div>
+      <div style="padding:12px 14px;background:#f5f7fb;border-radius:8px;">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.7px;color:#8aa0c0;margin-bottom:4px;">Login URL</div>
+        <div style="font-size:12px;font-weight:600;color:#1B3F7A;">127.0.0.1:5000/login</div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex;gap:12px;">
+      <a href="/admin/users/new"
+         style="background:#1B3F7A;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;">
+        + Onboard Another
+      </a>
+      <a href="/admin/users"
+         style="background:none;border:1px solid var(--border);border-radius:8px;padding:10px 18px;font-size:13px;font-weight:600;color:#5070a0;text-decoration:none;">
+        Back to Users
+      </a>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

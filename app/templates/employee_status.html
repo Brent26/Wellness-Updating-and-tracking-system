@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div x-data="dashboard()" x-init="initEmployeeStatus('{{ initial_category }}')">
+  <div>
+    <div class="page-title">Employee Status</div>
+    <div class="page-sub">View employees by medical status.</div>
+  </div>
+
+  <div class="status-filter-row">
+    <button type="button" class="status-filter-btn overdue" :class="{ 'active': activeStatusFilter === 'overdue' }" @click="setStatusFilter('overdue')">
+      Overdue
+    </button>
+    <button type="button" class="status-filter-btn due-soon" :class="{ 'active': activeStatusFilter === 'due_soon' }" @click="setStatusFilter('due_soon')">
+      Due Within 30 Days
+    </button>
+    <button type="button" class="status-filter-btn up-to-date" :class="{ 'active': activeStatusFilter === 'up_to_date' }" @click="setStatusFilter('up_to_date')">
+      Up to Date
+    </button>
+    <button type="button" class="status-filter-btn pending" :class="{ 'active': activeStatusFilter === 'new_hires' }" @click="setStatusFilter('new_hires')">
+      New Hires
+    </button>
+    <button type="button" class="status-filter-btn search-tab" :class="{ 'active': activeStatusFilter === 'search' }" @click="setStatusFilter('search')">
+      Search
+    </button>
+  </div>
+
+  <!-- Search Panel -->
+  <div class="card" style="margin-top:0" x-show="activeStatusFilter === 'search'">
+    <div class="card-head">
+      <span>Search Employees</span>
+      <span x-show="employeeSearchResults.length > 0" x-text="employeeSearchResults.length + ' results'"></span>
+    </div>
+    <div style="padding: 16px 20px;">
+      <div style="display:flex; gap:10px; align-items:center;">
+        <input
+          type="text"
+          x-model="employeeSearchQuery"
+          @input.debounce.300ms="runEmployeeSearch()"
+          @keydown.enter="runEmployeeSearch()"
+          placeholder="Search by name, employee number, department, position…"
+          style="flex:1; padding:9px 14px; border:1px solid var(--border); border-radius:6px; font-size:14px; outline:none;"
+        />
+        <button type="button" class="inline-edit-btn primary" @click="runEmployeeSearch()">Search</button>
+      </div>
+    </div>
+    <div x-show="employeeSearchLoading" class="empty-state">Searching…</div>
+    <div x-show="employeeSearchError" class="empty-state" x-text="employeeSearchError"></div>
+    <div x-show="!employeeSearchLoading && employeeSearchQuery && employeeSearchResults.length === 0 && !employeeSearchError" class="empty-state">
+      No employees found matching your search.
+    </div>
+    <table x-show="!employeeSearchLoading && employeeSearchResults.length > 0">
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th>Employee Number</th>
+          <th>Department</th>
+          <th>Sub Area</th>
+          <th>Position</th>
+          <th>PS Group</th>
+          <th>Last Medical</th>
+          <th>Next Due</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <template x-for="record in employeeSearchResults" :key="employeeStatusRecordKey(record)">
+        <tbody>
+          <tr>
+            <td x-text="record.personnel_name || '-'"></td>
+            <td x-text="record.employee_number || '-'"></td>
+            <td x-text="record.department || '-'"></td>
+            <td x-text="record.subarea || record.personnel_subarea || '-'"></td>
+            <td x-text="record.role || record.position || '-'"></td>
+            <td x-text="record.ps_group || '-'"></td>
+            <td x-text="record.date_done || '-'"></td>
+            <td x-text="record.next_due || '-'"></td>
+            <td>
+              <span class="pill" :class="employeeStatusPillClass(record.status_category)" x-text="employeeStatusLabel(record.status_category)"></span>
+            </td>
+            <td>
+              <button type="button" class="inline-edit-btn" @click="openEmployeeStatusEditor(record)" x-text="isEditingEmployeeStatus(record) ? 'Editing' : 'Edit'"></button>
+            </td>
+          </tr>
+          <tr x-show="isEditingEmployeeStatus(record)">
+            <td colspan="10" class="inline-edit-cell">
+              <div class="inline-edit-panel">
+                <div class="inline-edit-grid">
+                  <template x-for="field in editableStatusFields(record)" :key="field.key">
+                    <label class="inline-edit-field">
+                      <span x-text="field.label"></span>
+                      <template x-if="field.type === 'select'">
+                        <select x-model="employeeStatusDraft[field.key]">
+                          <option value="">Select an option</option>
+                          <template x-for="option in field.options || []" :key="option">
+                            <option :value="option" x-text="option"></option>
+                          </template>
+                        </select>
+                      </template>
+                      <template x-if="field.type === 'checkbox'">
+                        <label class="inline-edit-checkbox">
+                          <input type="checkbox" x-model="employeeStatusDraft[field.key]" />
+                          <span>Mark as resolved</span>
+                        </label>
+                      </template>
+                      <template x-if="field.type !== 'select' && field.type !== 'checkbox'">
+                        <input :type="field.type || 'text'" x-model="employeeStatusDraft[field.key]" />
+                      </template>
+                    </label>
+                  </template>
+                </div>
+                <label class="inline-edit-field inline-edit-reason">
+                  <span>Reason for change</span>
+                  <input type="text" x-model="employeeStatusEditReason" placeholder="Why are you updating this record?" />
+                </label>
+                <div x-show="employeeStatusSaveError" class="inline-edit-error" x-text="employeeStatusSaveError"></div>
+                <div class="inline-edit-actions">
+                  <button type="button" class="inline-edit-btn primary" @click="saveEmployeeStatus(record)" x-text="employeeStatusSaving ? 'Saving...' : 'Save Changes'"></button>
+                  <button type="button" class="inline-edit-btn" @click="closeEmployeeStatusEditor()">Cancel</button>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </template>
+    </table>
+  </div>
+
+  <!-- Status Filter Panel -->
+  <div class="card" style="margin-top:0" x-show="activeStatusFilter !== 'search'">
+    <div class="card-head">
+      <span x-text="statusPageTitle"></span>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span x-text="filteredEmployeeStatusRecords.length + ' employees'"></span>
+        <button type="button" class="filter-toggle-btn" @click="employeeFilterOpen = !employeeFilterOpen">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+          Filter
+          <span class="filter-badge" x-show="activeFilterCount > 0" x-text="activeFilterCount"></span>
+        </button>
+        <button type="button" class="filter-clear-btn" x-show="activeFilterCount > 0" @click="clearEmployeeFilters()">Clear</button>
+      </div>
+    </div>
+
+    <!-- Filter Panel -->
+    <div class="filter-panel" x-show="employeeFilterOpen" x-transition>
+      <div class="filter-panel-grid">
+        <label class="filter-panel-field">
+          <span>Department</span>
+          <select x-model="employeeFilters.department">
+            <option value="">All Departments</option>
+            <template x-for="opt in filterOptions('department')" :key="opt">
+              <option :value="opt" x-text="opt"></option>
+            </template>
+          </select>
+        </label>
+        <label class="filter-panel-field">
+          <span>Sub Area</span>
+          <select x-model="employeeFilters.subarea">
+            <option value="">All Sub Areas</option>
+            <template x-for="opt in filterOptions('subarea')" :key="opt">
+              <option :value="opt" x-text="opt"></option>
+            </template>
+          </select>
+        </label>
+        <label class="filter-panel-field">
+          <span>Position</span>
+          <select x-model="employeeFilters.role">
+            <option value="">All Positions</option>
+            <template x-for="opt in filterOptions('role')" :key="opt">
+              <option :value="opt" x-text="opt"></option>
+            </template>
+          </select>
+        </label>
+        <label class="filter-panel-field">
+          <span>PS Group</span>
+          <select x-model="employeeFilters.ps_group">
+            <option value="">All PS Groups</option>
+            <template x-for="opt in filterOptions('ps_group')" :key="opt">
+              <option :value="opt" x-text="opt"></option>
+            </template>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div x-show="employeeStatusLoading" class="empty-state">Loading employee records...</div>
+    <div x-show="employeeStatusError" class="empty-state" x-text="employeeStatusError"></div>
+
+    <table x-show="!employeeStatusLoading && !employeeStatusError">
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th>Employee Number</th>
+          <th>Department</th>
+          <th>Sub Area</th>
+          <th>Position</th>
+          <th>PS Group</th>
+          <th>Last Medical</th>
+          <th>Next Due</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <template x-for="record in filteredEmployeeStatusRecords" :key="employeeStatusRecordKey(record)">
+        <tbody>
+          <tr>
+            <td x-text="record.personnel_name || '-'"></td>
+            <td x-text="record.employee_number || '-'"></td>
+            <td x-text="record.department || '-'"></td>
+            <td x-text="record.subarea || record.personnel_subarea || '-'"></td>
+            <td x-text="record.role || record.position || '-'"></td>
+            <td x-text="record.ps_group || '-'"></td>
+            <td x-text="record.date_done || '-'"></td>
+            <td x-text="record.next_due || '-'"></td>
+            <td>
+              <span class="pill" :class="employeeStatusPillClass(record.status_category)" x-text="employeeStatusLabel(record.status_category)"></span>
+            </td>
+            <td>
+              <button type="button" class="inline-edit-btn" @click="openEmployeeStatusEditor(record)" x-text="isEditingEmployeeStatus(record) ? 'Editing' : 'Edit'"></button>
+            </td>
+          </tr>
+          <tr x-show="isEditingEmployeeStatus(record)">
+            <td colspan="10" class="inline-edit-cell">
+              <div class="inline-edit-panel">
+                  <div class="inline-edit-grid">
+                    <template x-for="field in editableStatusFields(record)" :key="field.key">
+                      <label class="inline-edit-field">
+                        <span x-text="field.label"></span>
+                        <template x-if="field.type === 'select'">
+                          <select x-model="employeeStatusDraft[field.key]">
+                            <option value="">Select an option</option>
+                            <template x-for="option in field.options || []" :key="option">
+                              <option :value="option" x-text="option"></option>
+                            </template>
+                          </select>
+                        </template>
+                        <template x-if="field.type === 'checkbox'">
+                          <label class="inline-edit-checkbox">
+                            <input type="checkbox" x-model="employeeStatusDraft[field.key]" />
+                            <span>Mark as resolved</span>
+                          </label>
+                        </template>
+                        <template x-if="field.type !== 'select' && field.type !== 'checkbox'">
+                          <input :type="field.type || 'text'" x-model="employeeStatusDraft[field.key]" />
+                        </template>
+                      </label>
+                    </template>
+                  </div>
+                <label class="inline-edit-field inline-edit-reason">
+                  <span>Reason for change</span>
+                  <input type="text" x-model="employeeStatusEditReason" placeholder="Why are you updating this record?" />
+                </label>
+                <div x-show="employeeStatusSaveError" class="inline-edit-error" x-text="employeeStatusSaveError"></div>
+                <div class="inline-edit-actions">
+                  <button type="button" class="inline-edit-btn primary" @click="saveEmployeeStatus(record)" x-text="employeeStatusSaving ? 'Saving...' : 'Save Changes'"></button>
+                  <button type="button" class="inline-edit-btn" @click="closeEmployeeStatusEditor()">Cancel</button>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </template>
+      <tbody>
+        <tr x-show="filteredEmployeeStatusRecords.length === 0 && !employeeStatusLoading">
+          <td colspan="10" style="text-align:center;color:var(--text-mute);padding:24px">
+            <span x-text="activeFilterCount > 0 ? 'No employees match the selected filters.' : 'No employee records found for this category.'"></span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

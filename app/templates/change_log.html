@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div x-data="dashboard()" x-init="initChangeLog('{{ initial_source }}')">
+  <div>
+    <div class="page-title">Change Log</div>
+    <div class="page-sub">Review record updates, when they happened, and why they were made</div>
+  </div>
+
+  <div class="status-filter-row">
+    <button type="button" class="status-filter-btn" :class="{ 'active neutral': activeChangeLogSource === 'all' }" @click="setChangeLogSource('all')">
+      All Changes
+    </button>
+    <button type="button" class="status-filter-btn up-to-date" :class="{ 'active': activeChangeLogSource === 'periodic' }" @click="setChangeLogSource('periodic')">
+      Medical Records
+    </button>
+    <button type="button" class="status-filter-btn pending" :class="{ 'active': activeChangeLogSource === 'headcount' }" @click="setChangeLogSource('headcount')">
+      New Hires
+    </button>
+  </div>
+
+  <div class="card" style="margin-top:0">
+    <div class="card-head">
+      <span>Recent Changes</span>
+      <span x-text="changeLogs.length + ' entries'"></span>
+    </div>
+
+    <div x-show="changeLogLoading" class="empty-state">Loading change history...</div>
+    <div x-show="changeLogError" class="empty-state" x-text="changeLogError"></div>
+
+    <div x-show="!changeLogLoading && !changeLogError && changeLogs.length === 0" class="empty-state">
+      No change history found for this filter yet.
+    </div>
+
+    <div x-show="!changeLogLoading && !changeLogError && changeLogs.length > 0" class="change-log-list">
+      <template x-for="entry in changeLogs" :key="entry.id">
+        <article class="change-log-card">
+          <div class="change-log-top">
+            <div>
+              <div class="change-log-name" x-text="entry.personnel_name || 'Unknown employee'"></div>
+              <div class="change-log-meta">
+                <span x-text="entry.employee_number || 'No employee number'"></span>
+                <span x-text="entry.record_source === 'periodic' ? 'Medical record' : 'New hire record'"></span>
+              </div>
+            </div>
+            <div class="change-log-time" x-text="formatDate(entry.changed_at)"></div>
+          </div>
+
+          <div class="change-log-reason">
+            <strong>Reason:</strong>
+            <span x-text="entry.change_reason || 'No reason provided'"></span>
+          </div>
+
+          <div class="change-log-fields">
+            <template x-for="[field, detail] in Object.entries(entry.changed_fields || {})" :key="field">
+              <div class="change-log-field">
+                <div class="change-log-field-name" x-text="humanizeFieldName(field)"></div>
+                <div class="change-log-field-values">
+                  <span class="change-log-old" x-text="displayChangeValue(detail.from)"></span>
+                  <span class="change-log-arrow">to</span>
+                  <span class="change-log-new" x-text="displayChangeValue(detail.to)"></span>
+                </div>
+              </div>
+            </template>
+          </div>
+        </article>
+      </template>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div x-data="dashboard()" x-init="initConflicts()">
+
+  <div>
+    <div class="page-title">Scheduling Conflicts</div>
+    <div class="page-sub">Review and resolve flagged discrepancies across all data sources</div>
+  </div>
+
+  <!-- ── Filter row ──────────────────────────────────────── -->
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <select x-model="conflictSourceFilter"
+            style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--navy);background:var(--off);outline:none;">
+      <option value="">All sources</option>
+      <option value="headcount">Headcount</option>
+      <option value="medic">Medic</option>
+      <option value="booking_alerts">Booking Alerts</option>
+    </select>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-mute);cursor:pointer;">
+      <input type="checkbox" x-model="conflictShowResolved" @change="fetchConflicts()" />
+      Show resolved
+    </label>
+    <span style="font-size:11px;color:var(--text-mute);margin-left:4px;"
+          x-text="filteredConflicts.length + ' record' + (filteredConflicts.length === 1 ? '' : 's')"></span>
+  </div>
+
+  <!-- ── Summary pills ──────────────────────────────────── -->
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <div class="metric-med overdue" style="flex:1;min-width:140px;cursor:default;">
+      <div class="med-label">Headcount</div>
+      <div class="med-val" x-text="conflicts.filter(c=>c.source==='headcount'&&!c.resolved).length"></div>
+      <div class="med-sub">Unresolved flags</div>
+    </div>
+    <div class="metric-med due-soon" style="flex:1;min-width:140px;cursor:default;">
+      <div class="med-label">Medic</div>
+      <div class="med-val" x-text="conflicts.filter(c=>c.source==='medic'&&!c.resolved).length"></div>
+      <div class="med-sub">Unresolved flags</div>
+    </div>
+    <div class="metric-med pending" style="flex:1;min-width:140px;cursor:default;">
+      <div class="med-label">Booking Alerts</div>
+      <div class="med-val" x-text="conflicts.filter(c=>c.source==='booking_alerts'&&!c.resolved).length"></div>
+      <div class="med-sub">Unresolved flags</div>
+    </div>
+    <div class="metric-med up-to-date" style="flex:1;min-width:140px;cursor:default;">
+      <div class="med-label">Resolved</div>
+      <div class="med-val" x-text="conflicts.filter(c=>c.resolved).length"></div>
+      <div class="med-sub">All time</div>
+    </div>
+  </div>
+
+  <!-- ── Conflicts table ────────────────────────────────── -->
+  <div class="card" style="margin-top:0">
+    <div class="card-head">
+      <span>Conflict Log</span>
+      <span x-text="filteredConflicts.length + ' shown'"></span>
+    </div>
+
+    <div x-show="conflictLoading" class="empty-state">Loading conflicts...</div>
+    <div x-show="conflictError && !conflictLoading" class="empty-state" x-text="conflictError"></div>
+
+    <table x-show="!conflictLoading && !conflictError">
+      <thead>
+        <tr>
+          <th>Source</th>
+          <th>Description</th>
+          <th>Logged</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template x-for="c in filteredConflicts" :key="c.id">
+          <tr>
+            <td>
+              <span class="pill" :class="conflictSourceClass(c.source)" x-text="conflictSourceLabel(c.source)"></span>
+            </td>
+            <td style="max-width:480px;white-space:pre-wrap;line-height:1.5;" x-text="c.description"></td>
+            <td x-text="formatDate(c.logged_at)"></td>
+            <td>
+              <span class="pill" :class="c.resolved ? 'p-ok' : 'p-err'"
+                    x-text="c.resolved ? 'Resolved' : 'Open'"></span>
+            </td>
+            <td>
+              <button
+                type="button"
+                class="inline-edit-btn"
+                :disabled="c.resolved || conflictResolvingId === c.id"
+                x-text="conflictResolvingId === c.id ? 'Saving...' : (c.resolved ? 'Done' : 'Resolve')"
+                @click="resolveConflict(c)"
+                :style="c.resolved ? 'opacity:0.4;cursor:default' : ''">
+              </button>
+            </td>
+          </tr>
+        </template>
+        <tr x-show="filteredConflicts.length === 0 && !conflictLoading">
+          <td colspan="5" style="text-align:center;color:var(--text-mute);padding:24px">
+            No conflicts found
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+{% endblock %}

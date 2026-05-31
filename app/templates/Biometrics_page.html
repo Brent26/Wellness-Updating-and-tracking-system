@@ -1,0 +1,489 @@
+{% extends "base.html" %}
+{% block content %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<div x-data="bioPage()" x-init="loadStats(); loadTable()">
+
+  <!-- ── Page header ──────────────────────────────────────── -->
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+      <div class="page-title">Biometric Screening</div>
+      <div class="page-sub">Overview of employee biometric screening coverage and results.</div>
+    </div>
+    <button @click="openPicker('biometric','biometric')"
+            style="background:#1B3F7A;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;flex-shrink:0;">
+      + Upload Screening PDF
+    </button>
+  </div>
+
+  <!-- ── Error banner ─────────────────────────────────────── -->
+  <div x-show="stats.error && !loading"
+       style="background:#fde8e8;border:1px solid #f5c0c0;border-radius:10px;padding:12px 16px;font-size:13px;color:#c0392b;">
+    <strong>⚠ Data file unavailable:</strong> <span x-text="stats.error"></span>
+  </div>
+
+  <!-- ── Loading ──────────────────────────────────────────── -->
+  <div x-show="loading"
+       style="display:flex;align-items:center;gap:10px;color:#8aa0c0;font-size:13px;padding:40px 0;">
+    <div style="width:16px;height:16px;border:2px solid #dce6f5;border-top-color:#4AACE8;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+    Loading statistics…
+  </div>
+
+  <div x-show="!loading">
+
+    <!-- ── Hero strip ──────────────────────────────────────── -->
+    <div class="hero-strip">
+      <div>
+        <div class="hero-kicker">Screening Coverage</div>
+        <div class="hero-title" x-text="stats.coverage_pct + '% of employees screened'"></div>
+        <div style="margin-top:10px;background:rgba(255,255,255,0.15);border-radius:6px;height:8px;width:260px;overflow:hidden;">
+          <div style="height:100%;background:#4AACE8;border-radius:6px;transition:width 0.8s;"
+               :style="'width:' + (stats.coverage_pct || 0) + '%'"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:20px;">
+        <div style="text-align:center;">
+          <div style="font-size:28px;font-weight:700;color:#fff;" x-text="stats.total_screened ?? '—'"></div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.65);text-transform:uppercase;letter-spacing:0.5px;">Screened</div>
+        </div>
+        <div style="width:1px;background:rgba(255,255,255,0.2);"></div>
+        <div style="text-align:center;">
+          <div style="font-size:28px;font-weight:700;color:#fff;" x-text="stats.total_employees ?? '—'"></div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.65);text-transform:uppercase;letter-spacing:0.5px;">Total Employees</div>
+        </div>
+        <div style="width:1px;background:rgba(255,255,255,0.2);"></div>
+        <div style="text-align:center;">
+          
+          
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Stat cards ───────────────────────────────────────── -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+      <div class="card" style="margin:0;padding:18px 20px;">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.7px;color:#8aa0c0;margin-bottom:8px;">Last 30 Days</div>
+        <div style="font-size:30px;font-weight:700;color:#1B3F7A;" x-text="stats.recent_30_days ?? '—'"></div>
+        <div style="font-size:11px;color:#8aa0c0;margin-top:4px;">recent screenings</div>
+      </div>
+      <div class="card" style="margin:0;padding:18px 20px;">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.7px;color:#8aa0c0;margin-bottom:8px;">Average Age</div>
+        <div style="font-size:30px;font-weight:700;color:#1B3F7A;" x-text="stats.avg_age ?? '—'"></div>
+        <div style="font-size:11px;color:#8aa0c0;margin-top:4px;">years old</div>
+      </div>
+      <div class="card" style="margin:0;padding:18px 20px;">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.7px;color:#8aa0c0;margin-bottom:8px;">Male Screened</div>
+        <div style="font-size:30px;font-weight:700;color:#1B3F7A;" x-text="stats.male_count ?? '—'"></div>
+        <div style="font-size:11px;color:#8aa0c0;margin-top:4px;">employees</div>
+      </div>
+      <div class="card" style="margin:0;padding:18px 20px;">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.7px;color:#8aa0c0;margin-bottom:8px;">Female Screened</div>
+        <div style="font-size:30px;font-weight:700;color:#1B3F7A;" x-text="stats.female_count ?? '—'"></div>
+        <div style="font-size:11px;color:#8aa0c0;margin-top:4px;">employees</div>
+      </div>
+    </div>
+
+    <!-- ── Charts row ───────────────────────────────────────── -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+
+      <!-- Gender distribution -->
+      <div class="card" style="margin:0;">
+        <div class="card-head">Gender Distribution <span>Screened employees</span></div>
+        <div style="display:flex;align-items:center;gap:28px;padding:4px 8px;">
+          <div style="position:relative;width:180px;flex-shrink:0;">
+            <div x-effect="renderGenderChart(stats)">
+              <canvas id="genderChart" width="180" height="180"></canvas>
+            </div>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
+              <div style="font-size:22px;font-weight:700;color:#1B3F7A;" x-text="(stats.male_count||0)+(stats.female_count||0)"></div>
+              <div style="font-size:9px;color:#8aa0c0;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Total</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:18px;flex:1;">
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+                <div style="display:flex;align-items:center;gap:7px;">
+                  <div style="width:9px;height:9px;border-radius:50%;background:#1B3F7A;"></div>
+                  <span style="font-size:11px;color:#5070a0;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Male</span>
+                </div>
+                <span style="font-size:14px;font-weight:700;color:#1B3F7A;" x-text="stats.male_count ?? 0"></span>
+              </div>
+              <div style="height:5px;background:#e8f0f8;border-radius:3px;overflow:hidden;">
+                <div style="height:100%;background:#1B3F7A;border-radius:3px;transition:width 0.6s;"
+                     :style="'width:' + Math.round(((stats.male_count||0)/Math.max((stats.male_count||0)+(stats.female_count||0),1))*100) + '%'"></div>
+              </div>
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+                <div style="display:flex;align-items:center;gap:7px;">
+                  <div style="width:9px;height:9px;border-radius:50%;background:#4AACE8;"></div>
+                  <span style="font-size:11px;color:#5070a0;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Female</span>
+                </div>
+                <span style="font-size:14px;font-weight:700;color:#4AACE8;" x-text="stats.female_count ?? 0"></span>
+              </div>
+              <div style="height:5px;background:#e8f4fd;border-radius:3px;overflow:hidden;">
+                <div style="height:100%;background:#4AACE8;border-radius:3px;transition:width 0.6s;"
+                     :style="'width:' + Math.round(((stats.female_count||0)/Math.max((stats.male_count||0)+(stats.female_count||0),1))*100) + '%'"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Coverage -->
+      <div class="card" style="margin:0;">
+        <div class="card-head">Screening Coverage <span>vs total workforce</span></div>
+        <div style="display:flex;align-items:center;gap:28px;padding:4px 8px;">
+          <div style="position:relative;width:180px;flex-shrink:0;">
+            <div x-effect="renderCoverageChart(stats)">
+              <canvas id="coverageChart" width="180" height="180"></canvas>
+            </div>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
+              <div style="font-size:22px;font-weight:700;color:#16a34a;" x-text="(stats.coverage_pct ?? 0) + '%'"></div>
+              <div style="font-size:9px;color:#8aa0c0;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Coverage</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:18px;flex:1;">
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+                <div style="display:flex;align-items:center;gap:7px;">
+                  <div style="width:9px;height:9px;border-radius:50%;background:#16a34a;"></div>
+                  <span style="font-size:11px;color:#5070a0;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Screened</span>
+                </div>
+                <span style="font-size:14px;font-weight:700;color:#16a34a;" x-text="stats.total_screened ?? 0"></span>
+              </div>
+              <div style="height:5px;background:#edf9f2;border-radius:3px;overflow:hidden;">
+                <div style="height:100%;background:#16a34a;border-radius:3px;transition:width 0.6s;"
+                     :style="'width:' + (stats.coverage_pct || 0) + '%'"></div>
+              </div>
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+                <div style="display:flex;align-items:center;gap:7px;">
+                  <div style="width:9px;height:9px;border-radius:50%;background:#dce6f5;"></div>
+                  <span style="font-size:11px;color:#5070a0;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Not Yet Screened</span>
+                </div>
+                <span style="font-size:14px;font-weight:700;color:#8aa0c0;" x-text="Math.max((stats.total_employees||0)-(stats.total_screened||0),0)"></span>
+              </div>
+              <div style="height:5px;background:#f0f3f9;border-radius:3px;overflow:hidden;">
+                <div style="height:100%;background:#dce6f5;border-radius:3px;transition:width 0.6s;"
+                     :style="'width:' + Math.max(100-(stats.coverage_pct||0),0) + '%'"></div>
+              </div>
+            </div>
+            <div x-show="stats.needs_review_count > 0"
+                 style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff8e1;border-radius:8px;border:1px solid #f0dd9a;">
+              <span style="font-size:14px;">⚠️</span>
+              <div>
+                <div style="font-size:12px;font-weight:600;color:#b07d00;" x-text="stats.needs_review_count + ' records need review'"></div>
+                <div style="font-size:11px;color:#b07d00;opacity:0.8;">Flagged during processing</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Records table ─────────────────────────────────────── -->
+    <div class="card" style="margin-top:0">
+      <div class="card-head">
+        <span>Screening Records</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span x-text="filteredTableRecords.length + ' records'"></span>
+          <button type="button" class="filter-toggle-btn" @click="tableFilterOpen = !tableFilterOpen">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+            Filter
+            <span class="filter-badge" x-show="tableActiveFilterCount > 0" x-text="tableActiveFilterCount"></span>
+          </button>
+          <button type="button" class="filter-clear-btn" x-show="tableActiveFilterCount > 0" @click="clearTableFilters()">Clear</button>
+        </div>
+      </div>
+
+      <!-- Filter panel -->
+      <div class="filter-panel" x-show="tableFilterOpen" x-transition>
+        <div class="filter-panel-grid">
+          <label class="filter-panel-field">
+            <span>Search by name</span>
+            <input type="text" x-model="tableFilters.search" placeholder="First or last name…"
+                   style="padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;outline:none;width:100%;" />
+          </label>
+          <label class="filter-panel-field">
+            <span>Gender</span>
+            <select x-model="tableFilters.gender">
+              <option value="">All Genders</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div x-show="tableLoading" class="empty-state" style="padding:24px;">Loading records…</div>
+      <div x-show="tableError && !tableLoading" class="empty-state" style="color:#c0392b;padding:24px;" x-text="tableError"></div>
+
+      <div style="overflow-x:auto;">
+        <table x-show="!tableLoading && !tableError">
+          <thead>
+            <tr>
+              <th>First Name</th>
+              <th>Last Name</th>
+              <th>Date</th>
+              <th>Gender</th>
+              <th>Age</th>
+              <th>Glucose</th>
+              <th>Cholesterol</th>
+              <th>HIV</th>
+              <th>PS</th>
+              <th>Mammo</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <template x-for="record in filteredTableRecords" :key="tableRecordKey(record)">
+            <tbody>
+              <tr>
+                <td x-text="record['First name'] || '—'"></td>
+                <td x-text="record['Last name'] || '—'"></td>
+                <td x-text="(() => { const d = new Date(record['Date']); return isNaN(d) ? (record['Date'] || '—') : d.toLocaleDateString('en-GB', {day:'2-digit', month:'2-digit', year:'2-digit'}); })()"></td>
+                <td x-text="record['Gender'] || '—'"></td>
+                <td x-text="record['Age of employee'] || '—'"></td>
+                <td x-text="record['Glucose level'] || '—'"></td>
+                <td x-text="record['Total Cholesterol'] || '—'"></td>
+                <td>
+                  <span x-show="record['HIV']"
+                        class="pill"
+                        :class="record['HIV'] === 'NEGATIVE' ? 'p-ok' : record['HIV'] === 'POSITIVE' ? 'p-err' : 'p-run'"
+                        x-text="record['HIV']">
+                  </span>
+                  <span x-show="!record['HIV']" style="color:var(--text-mute);">—</span>
+                </td>
+                <td x-text="record['PSA'] || '—'"></td>
+                <td x-text="record['Mammo'] || '—'"></td>
+                <td>
+                  <button type="button" class="inline-edit-btn"
+                          @click="openRecordEditor(record)"
+                          x-text="isEditingRecord(record) ? 'Editing' : 'Edit'">
+                  </button>
+                </td>
+              </tr>
+              <tr x-show="isEditingRecord(record)">
+                <td colspan="11" class="inline-edit-cell">
+                  <div class="inline-edit-panel">
+                    <div class="inline-edit-grid">
+                      <template x-for="field in bioFields" :key="field.key">
+                        <label class="inline-edit-field">
+                          <span x-text="field.label"></span>
+                          <template x-if="field.type === 'select'">
+                            <select x-model="tableEditDraft[field.key]">
+                              <option value="">— Select —</option>
+                              <template x-for="opt in field.options" :key="opt">
+                                <option :value="opt" x-text="opt"></option>
+                              </template>
+                            </select>
+                          </template>
+                          <template x-if="field.type !== 'select'">
+                            <input :type="field.type" x-model="tableEditDraft[field.key]" />
+                          </template>
+                        </label>
+                      </template>
+                    </div>
+                    <label class="inline-edit-field inline-edit-reason">
+                      <span>Reason for change</span>
+                      <input type="text" x-model="tableEditReason" placeholder="Why are you updating this record?" />
+                    </label>
+                    <div x-show="tableEditError" class="inline-edit-error" x-text="tableEditError"></div>
+                    <div class="inline-edit-actions">
+                      <button type="button" class="inline-edit-btn primary"
+                              @click="saveRecord(record)"
+                              x-text="tableEditSaving ? 'Saving…' : 'Save Changes'">
+                      </button>
+                      <button type="button" class="inline-edit-btn" @click="closeRecordEditor()">Cancel</button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </template>
+          <tbody>
+            <tr x-show="filteredTableRecords.length === 0 && !tableLoading">
+              <td colspan="11" style="text-align:center;color:var(--text-mute);padding:24px;">
+                <span x-text="tableActiveFilterCount > 0 ? 'No records match the selected filters.' : 'No screening records found.'"></span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function bioPage() {
+  return {
+    // ── Stats ──────────────────────────────────────────────
+    loading: true,
+    stats: {},
+
+    // ── Table ──────────────────────────────────────────────
+    tableLoading: false,
+    tableError: "",
+    tableRecords: [],
+    tableFilterOpen: false,
+    tableFilters: { gender: "", search: "" },
+    tableEditingKey: null,
+    tableEditDraft: {},
+    tableEditReason: "",
+    tableEditSaving: false,
+    tableEditError: "",
+
+    bioFields: [
+      { key: "First name",        label: "First Name",            type: "text" },
+      { key: "Last name",         label: "Last Name",             type: "text" },
+      { key: "Date",              label: "Date (DD/MM/YYYY)",     type: "text" },
+      { key: "Age of employee",   label: "Age",                   type: "text" },
+      { key: "Gender",            label: "Gender",                type: "select", options: ["Male", "Female"] },
+      { key: "Glucose level",     label: "Glucose (mmol/L)",      type: "text" },
+      { key: "Total Cholesterol", label: "Cholesterol (mmol/L)",  type: "text" },
+      { key: "HIV",               label: "HIV Result",            type: "select", options: ["NEGATIVE", "POSITIVE"] },
+      { key: "PSA",               label: "PSA",                   type: "text" },
+      { key: "Mammo",             label: "Mammo",                 type: "text" },
+      { key: "PapSmear",          label: "Pap Smear",             type: "text" },
+    ],
+
+    // ── Stats ──────────────────────────────────────────────
+    loadStats() {
+      fetch('/api/biometric/stats')
+        .then(r => r.json())
+        .then(data => { this.stats = data; this.loading = false; })
+        .catch(() => { this.stats = { error: 'Could not load statistics.' }; this.loading = false; });
+    },
+
+    // ── Table ──────────────────────────────────────────────
+    loadTable() {
+      this.tableLoading = true;
+      this.tableError = "";
+      fetch('/api/biometric/records')
+        .then(r => r.json())
+        .then(data => {
+          this.tableLoading = false;
+          if (data.error) { this.tableError = data.error; }
+          else { this.tableRecords = Array.isArray(data) ? data : []; }
+        })
+        .catch(err => { this.tableLoading = false; this.tableError = err.message; });
+    },
+
+    get filteredTableRecords() {
+      const g = this.tableFilters.gender;
+      const q = (this.tableFilters.search || "").trim().toLowerCase();
+      return this.tableRecords.filter(r =>
+        (!g || (r["Gender"] || "").toLowerCase() === g.toLowerCase()) &&
+        (!q ||
+          (r["First name"] || "").toLowerCase().includes(q) ||
+          (r["Last name"]  || "").toLowerCase().includes(q))
+      );
+    },
+
+    get tableActiveFilterCount() {
+      return Object.values(this.tableFilters).filter(v => v !== "").length;
+    },
+
+    clearTableFilters() {
+      this.tableFilters = { gender: "", search: "" };
+    },
+
+    tableRecordKey(record) {
+      return "bio-" + record.row_idx;
+    },
+
+    isEditingRecord(record) {
+      return this.tableEditingKey === this.tableRecordKey(record);
+    },
+
+    openRecordEditor(record) {
+      this.tableEditingKey = this.tableRecordKey(record);
+      this.tableEditDraft = {};
+      for (const field of this.bioFields) {
+        this.tableEditDraft[field.key] = record[field.key] || "";
+      }
+      this.tableEditReason = "";
+      this.tableEditError = "";
+    },
+
+    closeRecordEditor() {
+      this.tableEditingKey = null;
+      this.tableEditDraft = {};
+      this.tableEditReason = "";
+      this.tableEditError = "";
+      this.tableEditSaving = false;
+    },
+
+    saveRecord(record) {
+      const changes = {};
+      for (const field of this.bioFields) {
+        const orig    = record[field.key] || "";
+        const updated = this.tableEditDraft[field.key] || "";
+        if (orig !== updated) changes[field.key] = updated;
+      }
+      if (!Object.keys(changes).length) {
+        this.tableEditError = "No changes to save."; return;
+      }
+      if (!this.tableEditReason.trim()) {
+        this.tableEditError = "Please enter a reason for the change."; return;
+      }
+      this.tableEditSaving = true;
+      this.tableEditError = "";
+      fetch(`/api/biometric/records/${record.row_idx}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ changes, reason: this.tableEditReason }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          this.tableEditSaving = false;
+          if (data.error) { this.tableEditError = data.error; return; }
+          this.closeRecordEditor();
+          this.loadTable();
+          this.loadStats();
+        })
+        .catch(err => { this.tableEditSaving = false; this.tableEditError = err.message; });
+    },
+  };
+}
+
+function renderGenderChart(stats) {
+  const ctx = document.getElementById('genderChart');
+  if (!ctx || !window.Chart) return;
+  if (window._genderChart) { window._genderChart.destroy(); window._genderChart = null; }
+  window._genderChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Male', 'Female'],
+      datasets: [{ data: [stats.male_count || 0, stats.female_count || 0],
+        backgroundColor: ['#1B3F7A', '#4AACE8'], borderWidth: 3, borderColor: '#fff', hoverOffset: 6 }]
+    },
+    options: { cutout: '70%', plugins: { legend: { display: false },
+      tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.raw} employees` } } }, animation: { duration: 500 } }
+  });
+}
+
+function renderCoverageChart(stats) {
+  const ctx = document.getElementById('coverageChart');
+  if (!ctx || !window.Chart) return;
+  if (window._coverageChart) { window._coverageChart.destroy(); window._coverageChart = null; }
+  const screened   = stats.total_screened || 0;
+  const unscreened = Math.max((stats.total_employees || 0) - screened, 0);
+  window._coverageChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Screened', 'Not Yet Screened'],
+      datasets: [{ data: [screened, unscreened],
+        backgroundColor: ['#16a34a', '#dce6f5'], borderWidth: 3, borderColor: '#fff', hoverOffset: 6 }]
+    },
+    options: { cutout: '70%', plugins: { legend: { display: false },
+      tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.raw} employees` } } }, animation: { duration: 500 } }
+  });
+}
+</script>
+
+{% endblock %}

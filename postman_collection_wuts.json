@@ -1,0 +1,234 @@
+{
+  "info": {
+    "name": "WUTS Local API",
+    "_postman_id": "2b65f20d-7d5d-44bc-bf72-58c6f4f61a72",
+    "description": "Local Postman collection for testing the WUTS Flask API with session cookies and CSRF.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:5000" },
+    { "key": "username", "value": "wellness_manager" },
+    { "key": "password", "value": "Wellness@2026!" },
+    { "key": "csrf_token", "value": "" },
+    { "key": "conflict_id", "value": "1" },
+    { "key": "source", "value": "periodic" },
+    { "key": "record_id", "value": "1" },
+    { "key": "bio_row_idx", "value": "0" },
+    { "key": "folder", "value": "pdf" },
+    { "key": "task", "value": "booking_alerts" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "01 GET Login Page - Capture CSRF",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('login page loaded', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const html = pm.response.text();",
+                  "const match = html.match(/name=[\"']csrf_token[\"']\\s+value=[\"']([^\"']+)[\"']/);",
+                  "pm.test('csrf token found', function () {",
+                  "  pm.expect(match, 'csrf token input').to.not.be.null;",
+                  "});",
+                  "if (match) pm.collectionVariables.set('csrf_token', match[1]);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/login"
+          }
+        },
+        {
+          "name": "02 POST Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('login accepted or redirected', function () {",
+                  "  pm.expect([200, 302]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "csrf_token", "value": "{{csrf_token}}", "type": "text" },
+                { "key": "username", "value": "{{username}}", "type": "text" },
+                { "key": "password", "value": "{{password}}", "type": "text" }
+              ]
+            },
+            "url": "{{base_url}}/login"
+          }
+        },
+        {
+          "name": "03 GET Home - Verify Session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('authenticated page available', function () {",
+                  "  pm.expect([200, 302]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Read APIs",
+      "item": [
+        { "name": "Metrics", "request": { "method": "GET", "header": [], "url": "{{base_url}}/api/metrics" } },
+        { "name": "Jobs", "request": { "method": "GET", "header": [], "url": "{{base_url}}/api/jobs?limit=50" } },
+        { "name": "Task Summary", "request": { "method": "GET", "header": [], "url": "{{base_url}}/api/task-summary" } },
+        { "name": "Department Breakdown", "request": { "method": "GET", "header": [], "url": "{{base_url}}/api/department-breakdown" } },
+        { "name": "Conflicts", "request": { "method": "GET", "header": [], "url": "{{base_url}}/api/conflicts?resolved=true" } },
+        { "name": "Headcount", "request": { "method": "GET", "header": [], "url": "{{base_url}}/api/headcount" } },
+        { "name": "Medic", "request": { "method": "GET", "header": [], "url": "{{base_url}}/api/medic" } },
+        { "name": "New Hires", "request": { "method": "GET", "header": [], "url": "{{base_url}}/api/new-hires" } },
+        { "name": "Record Change Logs", "request": { "method": "GET", "header": [], "url": "{{base_url}}/api/record-change-logs?source=all&limit=100" } },
+        { "name": "Employee Status - Overdue", "request": { "method": "GET", "header": [], "url": "{{base_url}}/api/employee-status?category=overdue" } },
+        { "name": "Employee Status - Due Soon", "request": { "method": "GET", "header": [], "url": "{{base_url}}/api/employee-status?category=due_soon" } },
+        { "name": "Employee Status - Up To Date", "request": { "method": "GET", "header": [], "url": "{{base_url}}/api/employee-status?category=up_to_date" } },
+        { "name": "Employee Status - New Hires", "request": { "method": "GET", "header": [], "url": "{{base_url}}/api/employee-status?category=new_hires" } },
+        { "name": "Employee Status Options", "request": { "method": "GET", "header": [], "url": "{{base_url}}/api/employee-status-options" } },
+        { "name": "Files By Folder", "request": { "method": "GET", "header": [], "url": "{{base_url}}/api/files/{{folder}}" } },
+        { "name": "Biometric Stats", "request": { "method": "GET", "header": [], "url": "{{base_url}}/api/biometric/stats" } },
+        { "name": "Biometric Records", "request": { "method": "GET", "header": [], "url": "{{base_url}}/api/biometric/records" } }
+      ]
+    },
+    {
+      "name": "Write APIs - Use Carefully",
+      "item": [
+        {
+          "name": "Resolve Conflict",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "X-CSRFToken", "value": "{{csrf_token}}" }
+            ],
+            "url": "{{base_url}}/api/conflicts/{{conflict_id}}/resolve"
+          }
+        },
+        {
+          "name": "Run Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRFToken", "value": "{{csrf_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": "{{base_url}}/api/run/{{task}}"
+          }
+        },
+        {
+          "name": "Update Employee Status Record",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRFToken", "value": "{{csrf_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Postman API test\",\n  \"changes\": {}\n}"
+            },
+            "url": "{{base_url}}/api/employee-status/{{source}}/{{record_id}}"
+          }
+        },
+        {
+          "name": "Biometric Extract",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRFToken", "value": "{{csrf_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_path\": \"example.pdf\"\n}"
+            },
+            "url": "{{base_url}}/api/biometric/extract"
+          }
+        },
+        {
+          "name": "Biometric Confirm",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRFToken", "value": "{{csrf_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_path\": \"example.pdf\",\n  \"data\": {}\n}"
+            },
+            "url": "{{base_url}}/api/biometric/confirm"
+          }
+        },
+        {
+          "name": "Update Biometric Record",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-CSRFToken", "value": "{{csrf_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"changes\": {}\n}"
+            },
+            "url": "{{base_url}}/api/biometric/records/{{bio_row_idx}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Negative Tests",
+      "item": [
+        { "name": "Unauthenticated Metrics Should Redirect", "request": { "method": "GET", "header": [], "url": "{{base_url}}/api/metrics" } },
+        { "name": "Unknown Employee Category", "request": { "method": "GET", "header": [], "url": "{{base_url}}/api/employee-status?category=bad_category" } },
+        { "name": "Unknown Files Folder", "request": { "method": "GET", "header": [], "url": "{{base_url}}/api/files/not_a_folder" } }
+      ]
+    }
+  ]
+}
