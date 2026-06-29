@@ -28,9 +28,12 @@ WUTS is designed to streamline wellness program management in enterprise environ
 ## Quick Start
 
 ### Prerequisites
+
 - Python 3.8+
 - MSSQL Server or LocalDB instance
 - Virtual environment (recommended)
+- pandas , numpy, pdfplumber
+- werkzueg
 
 ### Development Setup
 
@@ -128,30 +131,35 @@ WUTS_FINAL_copy/
 ## Key Features
 
 ### Medical Compliance Management
+
 - Track periodic medical examinations with configurable intervals
 - Automatic due date calculations based on role (Executive, Top Brass, default)
 - 30-day warning system for upcoming exams
 - Conflict detection and logging for duplicate records
 
 ### Biometric Data Processing
+
 - Import biometric screening Excel files
 - Extract and organize biometric PDFs
 - Automatic data categorization and validation
 - Historical trend tracking
 
 ### Employee Records
+
 - Import from headcount/HR systems
 - Fuzzy name matching (85% threshold) for duplicate detection
 - Department and role-based organization
 - Custom column mapping for flexible data sources
 
 ### Real-time Analytics
+
 - Department-level compliance dashboards
 - Exam adherence rates and non-compliance metrics
 - Top 8 non-compliant departments view
 - Historical change tracking and audit logs
 
 ### User Management
+
 - Role-based access control (Admin, Manager, User)
 - Forced password changes on first login
 - Secure temporary password generation
@@ -173,6 +181,7 @@ See `postman_collection_wuts.json` for complete API documentation and examples.
 ## Production Deployment
 
 ### Prerequisites
+
 - MSSQL Server instance (production database)
 - Nginx web server
 - Gunicorn WSGI server
@@ -233,17 +242,20 @@ pytest --cov=app tests/  # With coverage
 ## Troubleshooting
 
 ### Database Connection Issues
+
 - Verify MSSQL Server is running
 - Check `DATABASE_URL` in `.env`
 - For LocalDB: Ensure `(localdb)\MSSQLLocalDB` exists
 - Verify connection string permissions
 
 ### File Path Issues
+
 - Ensure all paths in `.env` exist and are accessible
 - Use absolute paths for best results
 - On Windows, use `\` or raw strings `r"C:\path"`
 
 ### Import Failures
+
 - Check Excel file format (XLSX recommended)
 - Verify column headers match `DEPT_COLUMN_MAP` in config
 - Check PDF folder structure and naming conventions
